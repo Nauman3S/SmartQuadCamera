@@ -3,7 +3,7 @@ import time
 import random
 import threading
 from datetime import datetime
-from si7021 import *
+from gpsHandler import *
 
 # === Threads for the app ===
 
@@ -57,9 +57,8 @@ class MQTTThread(threading.Thread):
         print( self._args )
         while 1:
             dataArr=getData() 
-            self.client.publish('data/humid',dataArr[0])
-            self.client.publish('data/tempC',dataArr[1])
-            self.client.publish('data/tempF',dataArr[2])
+            self.client.publish('data/lat',dataArr[0])
+            self.client.publish('data/lng',dataArr[1])
                 
             time.sleep(self._args[1])
         self._target(*self._args)

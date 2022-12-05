@@ -53,6 +53,10 @@ A step by step series that covers how to get the Firmware running.
 
 ### Raspberry Pi Firmware Pre-Reqs
 
+  ```diff
+  - Make sure you are running a newer version of Raspberry Pi OS, a fresh install is highly recommended.
+```
+
 1.  Download and install the latest Raspberry Pi OS Desktop image to your SD card
 2.  Open the terminal and execute the following command
     ```sudo raspi-config```
@@ -68,10 +72,14 @@ A step by step series that covers how to get the Firmware running.
 
 * ![R2](artwork/r2_2.jpg)
 
-* And same for SPI, SSH and Camera
+ ```diff
+ + And do the same for SPI, SSH and Camera
+```
+
+4. Restart the Raspberry Pi.
 
 ### Configuring Raspberry Pi and Running the UI
-  1.  Copy FirmwareRPi folder to the desktop of your Raspberry Pi, open the terminal of your Raspberry Pi and execute the following commands
+  1.  Copy FirmwareRPi folder to the `/home/pi/` of your Raspberry Pi, open the terminal of your Raspberry Pi and execute the following commands
 
 ```bash
   - sudo apt-get update
@@ -79,11 +87,82 @@ A step by step series that covers how to get the Firmware running.
   - sudo apt install python3-pip
   - pip3 install paho-mqtt
   - sudo adduser $USER dialout
-  - sudo cp siSensor.service /lib/systemd/system/
+  - pip3 install pynmea2
+  - sudo pip3 install pynmea2
+  - sudo cp gpsSensor.service /lib/systemd/system/
   
 ```
 
-Once done, import `flows.json` to the nodered, form `dashboard` folder.
+### Camera Drivers Installation
+
+```bash
+- cd ~
+- wget -O install_pivariety_pkgs.sh https://github.com/ArduCAM/Arducam-Pivariety-V4L2-Driver/releases/download/install_script/install_pivariety_pkgs.sh
+- chmod +x install_pivariety_pkgs.sh 
+- ./install_pivariety_pkgs.sh -p libcamera_dev
+- ./install_pivariety_pkgs.sh -p libcamera_apps
+- ./install_pivariety_pkgs.sh -p 64mp_pi_hawk_eye_kernel_driver
+```
+
+Open `/boot/config.txt` using `sudo nano /boot/config.txt`, under `[all]`, add the following line:
+
+* `dtoverlay=vc4-kms-v3d,cma-512`
+
+Example:
+
+```bash
+[all]
+# Run as fast as firmware / board allows
+arm_boost=1
+dtoverlay=vc4-kms-v3d,cma-512
+
+```
+
+### Testing the Cameras
+
+1. Previewing the camera
+
+```bash
+libcamera-still -t 0 --viewfinder-width 2312 --viewfinder-height 1736
+```
+* --viewfinder-width
+  Set the width of the preview resolution.
+
+* --viewfinder-height
+  Set the height of the preview resolution.
+
+2. Taking a picture with autofocus enabled
+
+```bash
+libcamera-still -t 5000 --viewfinder-width 2312 --viewfinder-height 1736 -o pi_hawk_eye.jpg --autofocus
+```
+
+`By default, the quad-camera kit works in synchronized 4-channel mode (more modes will
+be added in future updates), and Raspberry Pi recognizes the whole kit as one camera.
+Any manual focus or camera control adjustments (exposure/gain/white balance/etc.) will
+also be applied to 4 cameras at the same time.`
+
+There are four channels available with the quad-camera kit. Each channel represents a camera, and you
+can switch channels to achieve different camera composition modes, including single-channel,
+dual-channel, and the default four-channel.
+1. Set to single channel 0
+`i2cset -y 10 0x24 0x24 0x02`
+2. Set to single channel 1
+`i2cset -y 10 0x24 0x24 0x12`
+3. Set to single channel 2
+`i2cset -y 10 0x24 0x24 0x22`
+4. Set to single channel 3
+`i2cset -y 10 0x24 0x24 0x32`
+5. Set to double channel (single channel 0 and single channel 1)
+`i2cset -y 10 0x24 0x24 0x01`
+6. Set to double channel (single channel 2 and single channel 3)
+`i2cset -y 10 0x24 0x24 0x11`
+7. Set to four in one mode (Default)
+`i2cset -y 10 0x24 0x24 0x00`
+
+After setting the channel, you can use `libcamera` apps to run the camera.
+
+
 ### Installing and Configuring Node-RED on Raspberry Pi
 
 Conifguring NodeRED, MQTT is required only one time.
@@ -118,7 +197,7 @@ as your Raspberry Pi is.
 In the browser you can type http://raspberrypi.local:1880 to open the node-red
 
 - Once node-red is opened, click on the menu button on the top left corner of the app and click on import.
-- Click on `select file to import` and select flows.json present in the `dashboard` directory of this repo.
+- Click on `select file to import` and select `flows.json` present in the `dashboard` directory of this repo.
 - After flows are imported, click on Deploy button on the top of the screen to save the changes.
 - You can access the Dashboard using http://raspberrypi.local:1880/ui
 
@@ -141,39 +220,44 @@ This program make use of MQTT to communicate with the webapp.
 
 ## 🔌 Circuit Diagram <a name = "circuit"></a>
 
-![GPIOsRPi](Circuit/Circuit.png)
+<!-- ![GPIOsRPi](Circuit/Circuit.png) -->
 
+### Connecting Quad Camera Kit
 
-* RPi 3,4 GPIOs Pinout
+1. Connect the HAT’s MIPI_TX0 port to Raspberry Pi’s camera port.
+
+![cam1](Circuit/camera1.png)
+
+2. Connect the Quad-Camera HAT.
+
+![cam2](Circuit/camera2.png)
+
+3. Connect the 4 camera modules to the Rx ports.
+
+![cam3](Circuit/camera3.png)
+
+### Connecting GPS
+
+![cam3](Circuit/gpsConnect.png)
+
+* RPi 3,4 GPIOs Reference Pinout
 
 ![GPIOsRPi](Circuit/rpi34.jpg)
 
-
+Power your Raspberry Pi on.
 
 ### Circuit
-
-
 
 ```http
 Pins connections
 ```
 
-| Si7021 | Raspberry Pi |
-| :--- | :--- |
-| `SDA` | `2` | 
-| `GND` | `GND` |
-| `3V3` | `3V3` | 
-| `SCL` | `3` | 
-
-| Relay Pins | Raspberry Pi |
+| GPS | Raspberry Pi |
 | :--- | :--- |
 | `VCC` | `5V` | 
-| `GND` | `GND` | 
-| `P1` | `29` | 
-| `P2` | `31` | 
-| `P2` | `33` | 
-| `P2` | `35` | 
-
+| `GND` | `GND` |
+| `TX` | `RX(GPIO15)` | 
+| `RX` | `TX(GPIO14)` | 
 
 
 ## Dashboard <a name = "dashboard"></a>
