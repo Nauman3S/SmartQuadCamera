@@ -262,6 +262,11 @@ Pins connections
 
 ## Dashboard <a name = "dashboard"></a>
 
+
+  ```diff
+  - This is Milestone 2 and no developed yet. 
+  ```
+
 You can use the dashboard with the link below:
 
 []()
